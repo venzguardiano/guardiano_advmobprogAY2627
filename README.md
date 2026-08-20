@@ -6,10 +6,12 @@
 
 A Flutter project that focuses on advance topics. Covering the Mobile to Web transactions.
 
-# Lab Activity 2: Discussion
+# Lab Activity 3: Discussion
 
-The Model, Service, and Screen work together to display data from the API. The Model stores the product information from the API response. The Service is responsible for requesting the data from the API endpoint and converting it into model objects. The Screen gets the data from the service and displays it to the user. When the API is called, the service fetches the data, the model organizes it, and the screen shows the products on the application.
+The Cart Model converts the API's JSON into Cart and CartProduct objects. The Cart Service calls the cart endpoints and returns the parsed data. The Cart Screen calls the service and displays the cart items.
 
-The new design pattern used in this activity separates the code into different parts: Model, Service, Screen, and Provider. Each part has its own responsibility. The Model manages the data, the Service handles the API, the Screen displays the user interface, and the Provider manages the application's theme. This makes the project more organized, easier to read, and easier to maintain.
+To reach the same detail_screen.dart, the Cart Screen takes the id from the tapped cart item and uses getById (ProductService's getProductById) to fetch the full Product, then passes it to the same ProductDetailsScreen used by the product listing. This is how getById connects a cart item to the detail screen.
+
+The updated design pattern still follows Model-Service-Screen, but now shows one screen (Cart Screen) combining two services (CartService and ProductService) to complete a feature.
 
 ## Lab Activity Instance

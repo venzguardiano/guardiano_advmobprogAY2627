@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'details_screen.dart';
+import 'detail_screen.dart';
 
 // models
 import '../models/product.dart';

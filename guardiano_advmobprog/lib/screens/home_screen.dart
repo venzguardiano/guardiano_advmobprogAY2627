@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+// screens
 import 'product_screen.dart';
+import 'cart_screen.dart';
 
+// widgets
 import '../widgets/custom_text.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,12 +32,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ? Image.asset('assets/images/nubdexchange_logo.png', scale: 11.sp)
               : CustomText(
                   text: (_selectedIndex == 1)
-                      ? 'Chat'
+                      ? 'Cart'
                       : (_selectedIndex == 2)
                       ? 'Profile'
                       : 'Home',
                   fontSize: 28.sp,
-                  // color: FB_LIGHT_PRIMARY,
                   fontWeight: FontWeight.w600,
                 ),
           actions: [
@@ -47,20 +49,38 @@ class _HomeScreenState extends State<HomeScreen> {
         body: PageView(
           physics: const NeverScrollableScrollPhysics(),
           controller: _pageController,
-          children: const <Widget>[ProductScreen()],
+          children: const <Widget>[
+            ProductScreen(),
+            CartScreen(),
+            Center(child: CustomText(text: 'Profile', fontSize: 16)),
+          ],
           onPageChanged: (page) {
             setState(() {
               _selectedIndex = page;
             });
           },
         ),
+        // Chat FAB, hidden while on the cart tab.
+        floatingActionButton: _selectedIndex == 1
+            ? null
+            : FloatingActionButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Chat coming soon')),
+                  );
+                },
+                child: const Icon(Icons.chat),
+              ),
         bottomNavigationBar: BottomNavigationBar(
-          showSelectedLabels: false, //selected item
-          showUnselectedLabels: false, //unselected item
+          showSelectedLabels: false,
+          showUnselectedLabels: false,
           onTap: _onTappedBar,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.shop_2), label: 'Shop'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart),
+              label: 'Cart',
+            ),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
           currentIndex: _selectedIndex,

@@ -4,18 +4,57 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 // models
 import '../models/product.dart';
 
+// services
+import '../services/cart_service.dart';
+
 // widgets
 import '../widgets/custom_text.dart';
 
 // Displays full details for a single product.
-class ProductDetailsScreen extends StatelessWidget {
+class ProductDetailsScreen extends StatefulWidget {
   final Product product;
 
   const ProductDetailsScreen({super.key, required this.product});
 
   @override
+  State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
+}
+
+class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
+  final CartService _cartService = CartService();
+
+  // No auth system yet, so this stands in for the logged in user.
+  final int _userId = 5;
+
+  bool _addingToCart = false;
+
+  // Sends the current product to the cart endpoint.
+  Future<void> _addToCart() async {
+    setState(() => _addingToCart = true);
+
+    try {
+      await _cartService.addToCart(_userId, [
+        {'id': widget.product.id, 'quantity': 1},
+      ]);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Added to cart')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add to cart: $e')));
+    } finally {
+      if (mounted) setState(() => _addingToCart = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final product = widget.product;
 
     return Scaffold(
       appBar: AppBar(
@@ -193,6 +232,31 @@ class ProductDetailsScreen extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        ),
+      ),
+      // Add to cart button pinned to the bottom.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(16.r),
+          child: SizedBox(
+            width: double.infinity,
+            height: 48.h,
+            child: ElevatedButton.icon(
+              onPressed: _addingToCart ? null : _addToCart,
+              icon: _addingToCart
+                  ? SizedBox(
+                      width: 16.w,
+                      height: 16.h,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_shopping_cart),
+              label: CustomText(
+                text: _addingToCart ? 'Adding...' : 'Add to Cart',
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ),
