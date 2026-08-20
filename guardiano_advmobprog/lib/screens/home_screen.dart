@@ -4,6 +4,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 // screens
 import 'product_screen.dart';
 import 'cart_screen.dart';
+import 'profile_screen.dart';
+
+// services
+import '../services/user_service.dart';
 
 // widgets
 import '../widgets/custom_text.dart';
@@ -20,6 +24,25 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
+  String _userName = '';
+  final UserService _userService = UserService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = await _userService.getUser();
+
+    if (!mounted) return;
+
+    setState(() {
+      _userName = user.firstName;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -34,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   text: (_selectedIndex == 1)
                       ? 'Cart'
                       : (_selectedIndex == 2)
-                      ? 'Profile'
+                      ? _userName
                       : 'Home',
                   fontSize: 28.sp,
                   fontWeight: FontWeight.w600,
@@ -52,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: const <Widget>[
             ProductScreen(),
             CartScreen(),
-            Center(child: CustomText(text: 'Profile', fontSize: 16)),
+            ProfileScreen(),
           ],
           onPageChanged: (page) {
             setState(() {
