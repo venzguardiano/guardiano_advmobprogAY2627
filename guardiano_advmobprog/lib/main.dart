@@ -5,9 +5,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
+// firebase packages
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
 // screens
 import 'screens/splash_screen.dart';
 import 'screens/signin_screen.dart';
+import 'screens/signup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
 
@@ -21,6 +26,11 @@ void main() async {
     _,
   ) async {
     await dotenv.load(fileName: 'assets/.env');
+
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
     runApp(const GuardianoAdvMobProg());
   });
 }
@@ -48,6 +58,7 @@ class GuardianoAdvMobProg extends StatelessWidget {
             routes: {
               '/splash': (context) => const SplashScreen(),
               '/signin': (context) => const SigninScreen(),
+              '/signup': (context) => const SignupScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
             },

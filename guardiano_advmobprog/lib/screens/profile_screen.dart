@@ -27,6 +27,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Cart> _carts = [];
   bool _isLoading = true;
   String? _error;
+  bool _isFirebaseUser = false;
+  String _firebaseEmail = '';
+  String _firebaseUsername = '';
 
   @override
   void initState() {
@@ -34,18 +37,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
-  // Loads the saved user, then fetches that user's cart(s) by userId.
+  // Determines LoginType and loads user data accordingly.
   Future<void> _loadProfile() async {
     try {
-      final user = await _userService.getUser();
-      final carts = await _cartService.getCartsByUser(user.id);
+      // Check LoginType based on Firebase currentUser vs SharedPreferences
+      final firebaseUser = _userService.currentUser;
 
-      if (!mounted) return;
-      setState(() {
-        _user = user;
-        _carts = carts;
-        _isLoading = false;
-      });
+      if (firebaseUser != null) {
+        // Firebase Auth Login Type
+        if (!mounted) return;
+        setState(() {
+          _isFirebaseUser = true;
+          _firebaseEmail = firebaseUser.email ?? 'No Email';
+          _firebaseUsername =
+              firebaseUser.displayName ??
+              firebaseUser.email?.split('@').first ??
+              'Firebase User';
+          _isLoading = false;
+        });
+      } else {
+        // DummyJSON Login Type using getUserData()
+        final user = await _userService.getUser();
+        final carts = await _cartService.getCartsByUser(user.id);
+
+        if (!mounted) return;
+        setState(() {
+          _isFirebaseUser = false;
+          _user = user;
+          _carts = carts;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -55,28 +77,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Clears the session and returns to the signin screen.
-  Future<void> _logout() async {
-    await _userService.logout();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Detect current theme so dark mode from Settings is respected.
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null || _user == null) {
+    if (_error != null) {
       return Center(
         child: CustomText(text: 'Error: $_error', fontSize: 13.sp),
       );
     }
 
+    // Show user details depending on the LoginType()
+    if (_isFirebaseUser) {
+      return ListView(
+        padding: EdgeInsets.all(16.w),
+        children: [
+          Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 42.r,
+                  backgroundColor: const Color(0xFF1E2A78),
+                  child: const Icon(
+                    Icons.person,
+                    size: 40,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                CustomText(
+                  text: _firebaseUsername,
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+                CustomText(
+                  text: '(Firebase Auth User)',
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.grey,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 24.h),
+          Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900] : Colors.white,
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Column(
+              children: [
+                _infoRow(Icons.email_outlined, 'Email', _firebaseEmail),
+                Divider(height: 20.h),
+                _infoRow(Icons.security, 'Auth Type', 'Firebase SDK'),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // DummyJSON User Details Flow
     final user = _user!;
 
     return RefreshIndicator(
@@ -84,7 +150,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListView(
         padding: EdgeInsets.all(16.w),
         children: [
-          // Avatar and username header.
           Center(
             child: Column(
               children: [
@@ -112,8 +177,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           SizedBox(height: 24.h),
-
-          // User details card.
           Container(
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
@@ -127,12 +190,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _infoRow(Icons.wc_outlined, 'Gender', user.gender),
                 Divider(height: 20.h),
                 _infoRow(Icons.badge_outlined, 'User ID', '#${user.id}'),
+                Divider(height: 20.h),
+                _infoRow(Icons.security, 'Auth Type', 'DummyJSON API'),
               ],
             ),
           ),
           SizedBox(height: 24.h),
-
-          // Cart section, scoped to the logged-in user's userId.
           CustomText(
             text: 'My Cart',
             fontSize: 15.sp,
@@ -155,33 +218,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       .toList(),
                 ),
           SizedBox(height: 24.h),
-
-          // Logout button.
-          SizedBox(
-            width: double.infinity,
-            height: 46.h,
-            child: ElevatedButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout, color: Colors.white),
-              label: CustomText(
-                text: 'Log Out',
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // Builds a single labeled row used in the details card.
   Widget _infoRow(IconData icon, String label, String value) {
     return Row(
       children: [
@@ -194,7 +235,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Builds a card summarizing one cart, with its product list.
   Widget _cartCard(Cart cart, bool isDark) {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
@@ -218,8 +258,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           Divider(height: 16.h),
-
-          // Lists each product in this cart.
           ...cart.products.map(
             (product) => Padding(
               padding: EdgeInsets.symmetric(vertical: 6.h),
@@ -258,8 +296,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           Divider(height: 16.h),
-
-          // Cart totals summary.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

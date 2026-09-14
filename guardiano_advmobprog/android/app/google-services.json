@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "739110702248",
+    "project_id": "advmobprog-firebase-b76a8",
+    "storage_bucket": "advmobprog-firebase-b76a8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:739110702248:android:2a0eca2003ad2feda7069d",
+        "android_client_info": {
+          "package_name": "com.example.guardiano_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBat86FTteuyDXChLt8Hr7dKKyA1FWh9PQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

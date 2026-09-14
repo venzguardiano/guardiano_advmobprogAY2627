@@ -1,13 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../models/user.dart';
+
+ValueNotifier<UserService> userService = ValueNotifier(UserService());
 
 class UserService {
   Map<String, dynamic> data = {};
 
-  Future<Map<String, dynamic>> loginUser(String username, String password) async {
+  Future<Map<String, dynamic>> loginUser(
+    String username,
+    String password,
+  ) async {
     final response = await post(
       Uri.parse('$host/auth/login'),
       headers: {'Content-Type': 'application/json'},
@@ -27,7 +34,7 @@ class UserService {
     }
   }
 
-  /// **Save User Data to SharedPreferences**
+  /// Save User Data to SharedPreferences
   /// Save user data from API response based on User model
   Future<void> saveUserData(Map<String, dynamic> userData) async {
     final prefs = await SharedPreferences.getInstance();
@@ -75,14 +82,14 @@ class UserService {
     return User.fromJson(userData);
   }
 
-  /// **Check if User is Logged In**
+  /// Check if User is Logged In
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('accessToken') ?? prefs.getString('token');
     return token != null && token.isNotEmpty;
   }
 
-  /// **Logout and Clear User Data**
+  /// Logout and Clear User Data
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -90,5 +97,66 @@ class UserService {
     } catch (e) {
       throw Exception('Failed to log out: $e');
     }
+  }
+
+  // FIREBASE CODE
+
+  final fb.FirebaseAuth firebaseAuth = fb.FirebaseAuth.instance;
+
+  fb.User? get currentUser => firebaseAuth.currentUser;
+  Stream<fb.User?> get authStateChanges => firebaseAuth.authStateChanges();
+
+  Future<fb.UserCredential> signIn({
+    required String email,
+    required String password,
+  }) async {
+    return await firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  Future<fb.UserCredential> createAccount({
+    required String email,
+    required String password,
+  }) async {
+    return await firebaseAuth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  Future<void> signOut() async {
+    await firebaseAuth.signOut();
+  }
+
+  Future<void> updateUsername({required String username}) async {
+    await currentUser!.updateDisplayName(username);
+  }
+
+  Future<void> deleteAccount({
+    required String email,
+    required String password,
+  }) async {
+    fb.AuthCredential credential = fb.EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await currentUser!.reauthenticateWithCredential(credential);
+    await currentUser!.delete();
+    await firebaseAuth.signOut();
+  }
+
+  Future<void> resetPasswordFromCurrentPassword({
+    required String currentPassword,
+    required String newPassword,
+    required String email,
+  }) async {
+    fb.AuthCredential credential = fb.EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await currentUser!.reauthenticateWithCredential(credential);
+    await currentUser!.updatePassword(newPassword);
   }
 }

@@ -183,6 +183,18 @@ class _SigninScreenState extends State<SigninScreen> {
                             ),
                     ),
                   ),
+                  SizedBox(height: 16.h),
+
+                  // Navigation button to Signup Screen
+                  TextButton(
+                    onPressed: () => Navigator.pushNamed(context, '/signup'),
+                    child: const CustomText(
+                      text: "Don't have an account? Sign Up",
+                      color: Color(0xFF1E2A78),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
                   SizedBox(height: 40.h),
                 ],
               ),
