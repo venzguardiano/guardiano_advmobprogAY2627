@@ -25,6 +25,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final UserService _userService = UserService();
 
+  // Tracks request in progress state, password field visibility, and active auth mode.
+  bool _isFirebase = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -40,7 +42,7 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  // Validates inputs, creates user via Firebase Auth SDK, and saves account metadata.
+  // Validates inputs, creates user via selected auth mode, and routes back to login.
   void _signup() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -48,29 +50,40 @@ class _SignupScreenState extends State<SignupScreen> {
       });
 
       try {
-        // Register user with Firebase Auth SDK
-        await _userService.createAccount(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+        if (_isFirebase) {
+          // Register user with Firebase Auth SDK.
+          await _userService.createAccount(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
 
-        // Update display username
-        await _userService.updateUsername(
-          username: _usernameController.text.trim(),
-        );
+          // Update display username.
+          await _userService.updateUsername(
+            username: _usernameController.text.trim(),
+          );
+        } else {
+          // Simulate user creation via DummyJSON API.
+          await Future.delayed(const Duration(seconds: 1));
+        }
 
         if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
 
+        // Surfaces the signup success to the user via a SnackBar.
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created successfully! Please sign in.'),
+          SnackBar(
+            content: Text(
+              _isFirebase
+                  ? 'Firebase Account created successfully! Please sign in.'
+                  : 'DummyJSON user simulated successfully! Please sign in.',
+            ),
           ),
         );
         Navigator.pop(context);
       } catch (e) {
+        // Surfaces the signup error to the user via a SnackBar.
         if (!mounted) return;
         setState(() {
           _isLoading = false;
@@ -113,7 +126,82 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 24.h),
 
-                  // First Name (fName)
+                  // Auth mode segmented toggle.
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(4.w),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isFirebase = false;
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: !_isFirebase
+                                    ? const Color(0xFF1E2A78)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'DummyJSON API',
+                                  style: TextStyle(
+                                    color: !_isFirebase
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isFirebase = true;
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: _isFirebase
+                                    ? const Color(0xFF1E2A78)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Firebase SDK',
+                                  style: TextStyle(
+                                    color: _isFirebase
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24.h),
+
+                  // First Name input with detailed length validation.
                   TextFormField(
                     controller: _fNameController,
                     decoration: InputDecoration(
@@ -125,14 +213,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'First name is required';
+                        return 'First name is required.';
+                      }
+                      if (value.trim().length < 2) {
+                        return 'First name must be at least 2 characters long.';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 16.h),
 
-                  // Last Name (lName)
+                  // Last Name input with detailed length validation.
                   TextFormField(
                     controller: _lNameController,
                     decoration: InputDecoration(
@@ -144,14 +235,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Last name is required';
+                        return 'Last name is required.';
+                      }
+                      if (value.trim().length < 2) {
+                        return 'Last name must be at least 2 characters long.';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 16.h),
 
-                  // Age
+                  // Age input with numeric and range validation.
                   TextFormField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
@@ -164,17 +258,21 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Age is required';
+                        return 'Age is required.';
                       }
-                      if (int.tryParse(value) == null) {
-                        return 'Please enter a valid number for age';
+                      final age = int.tryParse(value.trim());
+                      if (age == null) {
+                        return 'Please enter a valid numeric age.';
+                      }
+                      if (age < 1 || age > 120) {
+                        return 'Please enter a realistic age between 1 and 120.';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 16.h),
 
-                  // Contact No (contactNo)
+                  // Contact No input with character length validation.
                   TextFormField(
                     controller: _contactNoController,
                     keyboardType: TextInputType.phone,
@@ -187,14 +285,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Contact number is required';
+                        return 'Contact number is required.';
+                      }
+                      if (value.trim().length < 7) {
+                        return 'Please enter a valid phone number format.';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 16.h),
 
-                  // Username
+                  // Username input with length and character check.
                   TextFormField(
                     controller: _usernameController,
                     decoration: InputDecoration(
@@ -206,14 +307,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Username is required';
+                        return 'Username is required.';
+                      }
+                      if (value.trim().length < 4) {
+                        return 'Username must be at least 4 characters long.';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 16.h),
 
-                  // Email Address (emailAddress)
+                  // Email Address input with strict formatting check.
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -226,17 +330,20 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Email address is required';
+                        return 'Email address is required.';
                       }
                       if (!value.contains('@') || !value.contains('.')) {
-                        return 'Please enter a valid email address';
+                        return 'Please enter a valid email address (e.g., user@email.com).';
+                      }
+                      if (value.trim().length < 6) {
+                        return 'Email address is too short.';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 16.h),
 
-                  // Password with validation
+                  // Password input with a show/hide toggle and strength validation.
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -261,17 +368,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Password is required';
+                        return 'Password is required.';
                       }
                       if (value.length < 6) {
-                        return 'Password must be at least 6 characters long';
+                        return 'Password is too short (must be at least 6 characters).';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 28.h),
 
-                  // Sign Up Button
+                  // Signup button, disabled with a spinner while loading.
                   SizedBox(
                     width: double.infinity,
                     height: 48.h,

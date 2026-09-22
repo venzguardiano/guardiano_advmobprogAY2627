@@ -16,22 +16,23 @@ class SigninScreen extends StatefulWidget {
 
 class _SigninScreenState extends State<SigninScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final UserService _userService = UserService();
 
-  // Tracks request in progress state and password field visibility.
+  // Tracks request in progress state, password field visibility, and active auth mode.
+  bool _isFirebase = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // Validates the form, authenticates via UserService, then routes to home.
+  // Validates the form, authenticates via the selected service, then routes to home.
   void _login() async {
     setState(() {
       _isLoading = true;
@@ -39,20 +40,39 @@ class _SigninScreenState extends State<SigninScreen> {
 
     if (_formKey.currentState!.validate()) {
       try {
-        final response = await _userService.loginUser(
-          _usernameController.text.trim(),
-          _passwordController.text,
-        );
+        // Clears any lingering sessions (Firebase or DummyJSON) before new login.
+        await _userService.logout();
 
-        // Persists the logged-in user's data to SharedPreferences.
-        await _userService.saveUserData(response);
+        if (_isFirebase) {
+          // Firebase SDK login flow.
+          await _userService.signIn(
+            email: _identifierController.text.trim(),
+            password: _passwordController.text,
+          );
 
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-        });
+          if (!mounted) return;
+          setState(() {
+            _isLoading = false;
+          });
 
-        Navigator.pushReplacementNamed(context, '/home', arguments: response);
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          // DummyJSON API login flow.
+          final response = await _userService.loginUser(
+            _identifierController.text.trim(),
+            _passwordController.text,
+          );
+
+          // Persists the logged-in user's data to SharedPreferences.
+          await _userService.saveUserData(response);
+
+          if (!mounted) return;
+          setState(() {
+            _isLoading = false;
+          });
+
+          Navigator.pushReplacementNamed(context, '/home', arguments: response);
+        }
       } catch (e) {
         // Surfaces the login error to the user via a SnackBar.
         if (!mounted) return;
@@ -83,7 +103,7 @@ class _SigninScreenState extends State<SigninScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: 40.h),
+                  SizedBox(height: 30.h),
                   Image.asset(
                     'assets/images/nubdexchange_logo.png',
                     width: 72.w,
@@ -101,21 +121,111 @@ class _SigninScreenState extends State<SigninScreen> {
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w400,
                   ),
-                  SizedBox(height: 32.h),
+                  SizedBox(height: 24.h),
 
-                  // Username input, required.
+                  // Auth mode segmented toggle.
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(4.w),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isFirebase = false;
+                                _identifierController.clear();
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: !_isFirebase
+                                    ? const Color(0xFF1E2A78)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'DummyJSON API',
+                                  style: TextStyle(
+                                    color: !_isFirebase
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isFirebase = true;
+                                _identifierController.clear();
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: _isFirebase
+                                    ? const Color(0xFF1E2A78)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Firebase SDK',
+                                  style: TextStyle(
+                                    color: _isFirebase
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24.h),
+
+                  // Username or Email input depending on active auth mode.
                   TextFormField(
-                    controller: _usernameController,
+                    controller: _identifierController,
+                    keyboardType: _isFirebase
+                        ? TextInputType.emailAddress
+                        : TextInputType.text,
                     decoration: InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: const Icon(Icons.person_outline),
+                      labelText: _isFirebase ? 'Email Address' : 'Username',
+                      prefixIcon: Icon(
+                        _isFirebase
+                            ? Icons.email_outlined
+                            : Icons.person_outline,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
                       ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Username is required';
+                        return _isFirebase
+                            ? 'Email is required'
+                            : 'Username is required';
+                      }
+                      if (_isFirebase &&
+                          (!value.contains('@') || !value.contains('.'))) {
+                        return 'Please enter a valid email address';
                       }
                       return null;
                     },
@@ -185,7 +295,7 @@ class _SigninScreenState extends State<SigninScreen> {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Navigation button to Signup Screen
+                  // Navigation button to Signup Screen.
                   TextButton(
                     onPressed: () => Navigator.pushNamed(context, '/signup'),
                     child: const CustomText(
@@ -195,7 +305,7 @@ class _SigninScreenState extends State<SigninScreen> {
                     ),
                   ),
 
-                  SizedBox(height: 40.h),
+                  SizedBox(height: 30.h),
                 ],
               ),
             ),
