@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
@@ -35,7 +36,6 @@ class UserService {
   }
 
   /// Save User Data to SharedPreferences
-  /// Save user data from API response based on User model
   Future<void> saveUserData(Map<String, dynamic> userData) async {
     final prefs = await SharedPreferences.getInstance();
     final user = User.fromJson(userData);
@@ -50,7 +50,6 @@ class UserService {
     await prefs.setString('accessToken', user.accessToken);
     await prefs.setString('refreshToken', user.refreshToken);
 
-    // Support generic token key if present in API response
     if (userData.containsKey('token')) {
       await prefs.setString('token', userData['token'] ?? '');
     } else if (user.accessToken.isNotEmpty) {
@@ -58,16 +57,39 @@ class UserService {
     }
   }
 
-  /// Retrieve user data from SharedPreferences
+  /// Retrieve user data from SharedPreferences or Firebase Auth
   Future<Map<String, dynamic>> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
+    final fbUser = currentUser;
+
+    String email = prefs.getString('email') ?? fbUser?.email ?? '';
+    String uid = fbUser?.uid ?? '';
+    String firstName = prefs.getString('firstName') ?? '';
+    String lastName = prefs.getString('lastName') ?? '';
+
+    // Fetch from Firestore if fields are empty
+    if (uid.isNotEmpty && (firstName.isEmpty || lastName.isEmpty)) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(uid)
+            .get();
+        if (doc.exists && doc.data() != null) {
+          final docData = doc.data()!;
+          firstName = docData['firstName'] ?? '';
+          lastName = docData['lastName'] ?? '';
+          email = docData['email'] ?? email;
+        }
+      } catch (_) {}
+    }
 
     return {
       'id': prefs.getInt('id') ?? 0,
-      'username': prefs.getString('username') ?? '',
-      'email': prefs.getString('email') ?? '',
-      'firstName': prefs.getString('firstName') ?? '',
-      'lastName': prefs.getString('lastName') ?? '',
+      'uid': uid,
+      'username': prefs.getString('username') ?? fbUser?.displayName ?? '',
+      'email': email,
+      'firstName': firstName,
+      'lastName': lastName,
       'gender': prefs.getString('gender') ?? '',
       'image': prefs.getString('image') ?? '',
       'accessToken': prefs.getString('accessToken') ?? '',
@@ -76,24 +98,22 @@ class UserService {
     };
   }
 
-  /// Retrieve User model from SharedPreferences
   Future<User> getUser() async {
     final userData = await getUserData();
     return User.fromJson(userData);
   }
 
-  /// Check if User is Logged In
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('accessToken') ?? prefs.getString('token');
-    return token != null && token.isNotEmpty;
+    return (token != null && token.isNotEmpty) || currentUser != null;
   }
 
-  /// Logout and Clear User Data
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
+      await signOut();
     } catch (e) {
       throw Exception('Failed to log out: $e');
     }
@@ -102,6 +122,7 @@ class UserService {
   // FIREBASE CODE
 
   final fb.FirebaseAuth firebaseAuth = fb.FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   fb.User? get currentUser => firebaseAuth.currentUser;
   Stream<fb.User?> get authStateChanges => firebaseAuth.authStateChanges();
@@ -116,14 +137,28 @@ class UserService {
     );
   }
 
+  /// Creates both Firebase Auth user AND Firestore Users document.
   Future<fb.UserCredential> createAccount({
     required String email,
     required String password,
+    required String firstName,
+    required String lastName,
   }) async {
-    return await firebaseAuth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    fb.UserCredential userCredential = await firebaseAuth
+        .createUserWithEmailAndPassword(email: email, password: password);
+
+    String uid = userCredential.user!.uid;
+
+    // Automatically store user details in Firestore Users collection
+    await _firestore.collection('Users').doc(uid).set({
+      'uid': uid,
+      'email': email,
+      'firstName': firstName,
+      'lastName': lastName,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    return userCredential;
   }
 
   Future<void> signOut() async {

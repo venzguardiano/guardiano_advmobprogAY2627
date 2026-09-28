@@ -25,8 +25,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final UserService _userService = UserService();
 
-  // Tracks request in progress state, password field visibility, and active auth mode.
-  bool _isFirebase = false;
+  // Set default auth mode to Firebase SDK
+  bool _isFirebase = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -42,7 +42,6 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  // Validates inputs, creates user via selected auth mode, and routes back to login.
   void _signup() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -51,21 +50,20 @@ class _SignupScreenState extends State<SignupScreen> {
 
       try {
         if (_isFirebase) {
-          // Register user with Firebase Auth SDK.
+          // Register user in Firebase Auth and create Firestore Users document
           await _userService.createAccount(
             email: _emailController.text.trim(),
             password: _passwordController.text,
+            firstName: _fNameController.text.trim(),
+            lastName: _lNameController.text.trim(),
           );
 
-          // Update display username.
           await _userService.updateUsername(
             username: _usernameController.text.trim(),
           );
 
-          // Signs out immediately so the user must log in manually with their new account.
           await _userService.logout();
         } else {
-          // Simulate user creation via DummyJSON API.
           await Future.delayed(const Duration(seconds: 1));
         }
 
@@ -74,7 +72,6 @@ class _SignupScreenState extends State<SignupScreen> {
           _isLoading = false;
         });
 
-        // Surfaces the signup success to the user via a SnackBar.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -86,7 +83,6 @@ class _SignupScreenState extends State<SignupScreen> {
         );
         Navigator.pop(context);
       } catch (e) {
-        // Surfaces the signup error to the user via a SnackBar.
         if (!mounted) return;
         setState(() {
           _isLoading = false;
@@ -129,7 +125,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 24.h),
 
-                  // Auth mode segmented toggle.
+                  // Segmented toggle
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.all(4.w),
@@ -204,7 +200,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 24.h),
 
-                  // First Name input with detailed length validation.
+                  // First Name
                   TextFormField(
                     controller: _fNameController,
                     decoration: InputDecoration(
@@ -226,7 +222,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Last Name input with detailed length validation.
+                  // Last Name
                   TextFormField(
                     controller: _lNameController,
                     decoration: InputDecoration(
@@ -248,7 +244,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Age input with numeric and range validation.
+                  // Age
                   TextFormField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
@@ -275,7 +271,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Contact No input with character length validation.
+                  // Contact No
                   TextFormField(
                     controller: _contactNoController,
                     keyboardType: TextInputType.phone,
@@ -298,7 +294,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Username input with length and character check.
+                  // Username
                   TextFormField(
                     controller: _usernameController,
                     decoration: InputDecoration(
@@ -320,7 +316,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Email Address input with strict formatting check.
+                  // Email
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -346,7 +342,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Password input with a show/hide toggle and strength validation.
+                  // Password
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -381,7 +377,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   SizedBox(height: 28.h),
 
-                  // Signup button, disabled with a spinner while loading.
+                  // Submit
                   SizedBox(
                     width: double.infinity,
                     height: 48.h,

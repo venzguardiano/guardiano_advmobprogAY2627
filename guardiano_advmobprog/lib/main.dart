@@ -62,8 +62,7 @@ class GuardianoAdvMobProg extends StatelessWidget {
               '/signup': (context) => const SignupScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
-              '/chat': (context) =>
-                  const ChatScreen(), // Registered ChatScreen route
+              '/chat': (context) => const ChatScreen(),
             },
           );
         },

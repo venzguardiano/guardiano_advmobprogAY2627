@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -23,15 +24,18 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkAuthentication();
   }
 
-  // Checks if a user session is already saved, then routes accordingly.
+  // Checks if a Firebase Auth user or local session exists, then routes accordingly.
   Future<void> _checkAuthentication() async {
     await Future.delayed(const Duration(milliseconds: 3000));
 
-    final loggedIn = await _userService.isLoggedIn();
-
     if (!mounted) return;
 
-    if (loggedIn) {
+    // 1. Check direct Firebase Auth session persistence
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final loggedIn = await _userService.isLoggedIn();
+
+    // 2. If either Firebase Auth or local user service confirms a session, navigate to Home
+    if (firebaseUser != null || loggedIn) {
       final userData = await _userService.getUserData();
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home', arguments: userData);
