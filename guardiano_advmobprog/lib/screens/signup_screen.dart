@@ -61,6 +61,9 @@ class _SignupScreenState extends State<SignupScreen> {
           await _userService.updateUsername(
             username: _usernameController.text.trim(),
           );
+
+          // Signs out immediately so the user must log in manually with their new account.
+          await _userService.logout();
         } else {
           // Simulate user creation via DummyJSON API.
           await Future.delayed(const Duration(seconds: 1));

@@ -88,9 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? null
             : FloatingActionButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chat coming soon')),
-                  );
+                  Navigator.pushNamed(context, '/chat');
                 },
                 child: const Icon(Icons.chat),
               ),

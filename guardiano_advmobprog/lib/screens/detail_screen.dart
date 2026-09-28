@@ -6,6 +6,7 @@ import '../models/product.dart';
 
 // services
 import '../services/cart_service.dart';
+import '../services/user_service.dart';
 
 // widgets
 import '../widgets/custom_text.dart';
@@ -22,25 +23,39 @@ class ProductDetailsScreen extends StatefulWidget {
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   final CartService _cartService = CartService();
-
-  // No auth system yet, so this stands in for the logged in user.
-  final int _userId = 5;
+  final UserService _userService = UserService();
 
   bool _addingToCart = false;
 
-  // Sends the current product to the cart endpoint.
+  // Sends the current product and real logged-in user ID to the cart service.
   Future<void> _addToCart() async {
     setState(() => _addingToCart = true);
 
     try {
-      await _cartService.addToCart(_userId, [
-        {'id': widget.product.id, 'quantity': 1},
+      int userId = 5; // Fallback default user ID
+      try {
+        final user = await _userService.getUser();
+        userId = user.id;
+      } catch (_) {
+        final firebaseUser = _userService.currentUser;
+        if (firebaseUser != null) {
+          userId = firebaseUser.uid.hashCode.abs() % 100 + 1;
+        }
+      }
+
+      await _cartService.addToCart(userId, [
+        {
+          'id': widget.product.id,
+          'quantity': 1,
+          'product':
+              widget.product, // Passes full product for instant rendering
+        },
       ]);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Added to cart')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Added to cart successfully')),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

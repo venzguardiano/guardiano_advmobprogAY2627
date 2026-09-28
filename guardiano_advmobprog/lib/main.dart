@@ -15,6 +15,7 @@ import 'screens/signin_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/chat_screen.dart';
 
 // providers
 import 'providers/theme_provider.dart';
@@ -61,6 +62,8 @@ class GuardianoAdvMobProg extends StatelessWidget {
               '/signup': (context) => const SignupScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
+              '/chat': (context) =>
+                  const ChatScreen(), // Registered ChatScreen route
             },
           );
         },

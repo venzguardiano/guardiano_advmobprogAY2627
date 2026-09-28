@@ -26,4 +26,8 @@ The User Model stores the user information returned by the API, while the UserSe
 
 The authentication workflow covers both the legacy DummyJSON HTTP API and the Firebase SDK implementation. DummyJSON validates credentials via REST and caches local tokens using SharedPreferences, whereas Firebase handles secure sign-in, account creation, and token refreshing natively. The main idea of the UserService implementation is to unify local session caching and remote backend communication under a single service layer. Integrating Firebase benefits the application by providing production-ready infrastructure, robust credential security, and reliable account management.
 
+# Lab Activity 6: Discussion
+
+When initiating a chat, Cloud Firestore organizes data into a Users collection for profile details (uid, firstName, lastName, email) and a chat_rooms collection that holds a nested messages subcollection containing message text, sender/receiver IDs, and timestamps. To prevent duplicate rooms, the application sorts both users' UIDs alphabetically into a unique document ID (e.g., UID1_UID2). If a user chats with themselves, the sorting logic produces a self-referential room ID (e.g., UID1_UID1); while Firestore successfully stores the messages, every message evaluates senderId == currentUserId to true, causing the UI to render all bubbles with right-aligned sender styling and eliminating any sender-versus-receiver visual distinction.
+
 ## Lab Activity Instance
